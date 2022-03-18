@@ -38,4 +38,13 @@ if __name__ == "__main__":
         "?", "0.5")
     news_qa_test = news_qa_test.astype({"is_question_bad": np.float64})
     
+    # remove the rows with answers with too many ranges of tokens (> 4)
+    news_qa_train["token_ranges_number"] = news_qa_train.answer_token_ranges.str.count(":")
+    news_qa_train = news_qa_train[news_qa_train.token_ranges_number <= 4]
+    
+    news_qa_val["token_ranges_number"] = news_qa_val.answer_token_ranges.str.count(":")
+    news_qa_val = news_qa_val[news_qa_val.token_ranges_number <= 4]
+    
+    news_qa_test["token_ranges_number"] = news_qa_test.answer_token_ranges.str.count(":")
+    news_qa_test = news_qa_test[news_qa_test.token_ranges_number <= 4]
     
