@@ -51,6 +51,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 data/
+dataset/
 newsqa/
 
 # Translations
