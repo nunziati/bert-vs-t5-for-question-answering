@@ -53,6 +53,7 @@ coverage.xml
 data/
 dataset/
 newsqa/
+results/
 
 # Translations
 *.mo
