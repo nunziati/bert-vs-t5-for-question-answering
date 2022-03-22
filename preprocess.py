@@ -1,5 +1,34 @@
+from typing import List
 import pandas as pd
 import numpy as np
+
+def token_ranges_to_token_text(text: List[str], tokens: str) -> List[str]:
+    """Given a story text and a set of token range, retrieve the corresponding text.
+    
+    Args:
+        text (List[str]): the text in form of list of word
+        tokens (str): the token string 
+            Ex. 1 -> 20:40 the text is formed by the 20th token to the 40th excluded.
+            Ex. 2 -> 544:565,579:582,589:599,608:637 this set of tokens represent a text formed by different part of the text, each portion divided by comma is a part.
+    """    
+    if text is np.nan: return []
+    _answer: List[str] = []
+    try:
+        _listen_token: List[str] = tokens.split(",")
+    except Exception as ex:
+        print("Situazione di errore..")
+        print("Ricevuto:")
+        print(f"Tokens {tokens}")
+        return []
+    if len(_listen_token) == 0 or "-1" in _listen_token[0]: return []
+    
+    for token in _listen_token:
+        start_idx, end_idx = token.split(":")
+        if int(start_idx) > len(text) or int(end_idx) > len(text): return []
+        for index in range(int(start_idx)-1, int(end_idx)-1): 
+            _answer.append(text[index])
+    _answers_without_repetitions = set(_answer)
+    return list(_answers_without_repetitions)
 
 if __name__ == "__main__":
     # Load ids files
@@ -48,3 +77,18 @@ if __name__ == "__main__":
     news_qa_test["token_ranges_number"] = news_qa_test.answer_token_ranges.str.count(":")
     news_qa_test = news_qa_test[news_qa_test.token_ranges_number <= 4]
     
+    # Tokenize the story text
+    news_qa_train.story_text = news_qa_test.story_text.str.split(" ")
+    
+    news_qa_val.story_text = news_qa_val.story_text.str.split(" ")
+    
+    news_qa_test.story_text = news_qa_test.story_text.str.split(" ")
+    
+    # # Parse the answer ranges from token to plain text
+    news_qa_train['answer'] = news_qa_train.apply(lambda row : token_ranges_to_token_text(row.story_text,row.answer_token_ranges), axis = 1)
+    
+    news_qa_val['answer'] = news_qa_val.apply(lambda row : token_ranges_to_token_text(row.story_text,row.answer_token_ranges), axis = 1)
+    
+    news_qa_test['answer'] = news_qa_test.apply(lambda row : token_ranges_to_token_text(row.story_text,row.answer_token_ranges), axis = 1)
+    
+    print("ok")
