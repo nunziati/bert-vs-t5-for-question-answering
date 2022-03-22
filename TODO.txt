@@ -1,0 +1,4 @@
+- trovare e provare altri modelli basati su BERT
+- sceglierne uno e fare tuning degli iperparametri
+
+- capire come usare gpt(2) per question answering
