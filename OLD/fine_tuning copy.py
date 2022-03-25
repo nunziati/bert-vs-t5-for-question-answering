@@ -3,7 +3,7 @@ from datasets import load_dataset
 squad = load_dataset("squad")
 from transformers import AutoTokenizer
 
-tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+tokenizer = AutoTokenizer.from_pretrained("albert-base-v2")
 def preprocess_function(examples):
     questions = [q.strip() for q in examples["question"]]
     inputs = tokenizer(
@@ -63,7 +63,7 @@ data_collator = DefaultDataCollator()
 
 from transformers import AutoModelForQuestionAnswering, TrainingArguments, Trainer
 
-model = AutoModelForQuestionAnswering.from_pretrained("distilbert-base-uncased")
+model = AutoModelForQuestionAnswering.from_pretrained("albert-base-v2")
 
 training_args = TrainingArguments(
     output_dir="./results",
@@ -85,3 +85,4 @@ trainer = Trainer(
 )
 
 trainer.train()
+trainer.save_model("./trained/albert-base-v2")

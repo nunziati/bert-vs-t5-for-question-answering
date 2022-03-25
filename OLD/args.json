@@ -1,0 +1,14 @@
+{
+    "training_script": "train_t5_squad.py",
+    "model_name_or_path": "t5-small",
+    "max_len": 512,
+    "target_max_len": 32,
+    "output_dir": "./models/gpu/t5_base_duorc",
+    "overwrite_output_dir": true,
+    "per_gpu_train_batch_size": 15,
+    "per_gpu_eval_batch_size": 15,
+    "gradient_accumulation_steps": 4,
+    "learning_rate": 0.0001,
+    "num_train_epochs": 40,
+    "do_train": true
+}
