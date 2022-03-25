@@ -1,6 +1,6 @@
 {
     "training_script": "train_t5_squad.py",
-    "model_name_or_path": "t5-small",
+    "model_name_or_path": "t5-base",
     "max_len": 512,
     "target_max_len": 32,
     "output_dir": "./models/gpu/t5_base_duorc",
