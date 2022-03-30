@@ -1,10 +1,17 @@
+from __future__ import print_function
 from tqdm import tqdm
 import torch
 from datasets import load_dataset, load_metric
 from transformers import T5ForConditionalGeneration, T5Tokenizer, AdamW, set_seed
 from torch.utils.data import DataLoader
+import torch.nn.functional as F
 
-
+from collections import Counter
+import string
+import re
+import argparse
+import json
+import sys
 
 huggingface_model = 't5-base'
 batch_size = 16
@@ -80,19 +87,40 @@ class Dataset(torch.utils.data.Dataset):
     
 
 
+def f1_score(prediction, ground_truth):
+    prediction_tokens = prediction.tolist()
+    # Replace 0 pad with -100 token
+    prediction_tokens = [-100 if token == 0 else token for token in prediction_tokens]
+    ground_truth_tokens = ground_truth.tolist()
+    common = Counter(prediction_tokens) & Counter(ground_truth_tokens)
+    num_same = sum(common.values())
+    if num_same == 0:
+        return 0
+    precision = 1.0 * num_same / len(prediction_tokens)
+    recall = 1.0 * num_same / len(ground_truth_tokens)
+    f1 = (2 * precision * recall) / (precision + recall)
+    return f1
 
+
+def evaluate(predictions,gold_answers ):
+    f1 = exact_match = total = 0
+
+    for ground_truths, prediction in zip(gold_answers, predictions):
+      total += 1
+      f1 += f1_score(prediction, ground_truths)
+    
+    f1 = f1 / total
+
+    return f1
 
 def train(model, tokenizer, optimizer, train_set, validation_set, metric):
-    f1_score = load_metric('f1')
-    accuracy = load_metric('accuracy')
     # set training mode on the model
     model.train()
     
     # transfer model to cuda
     model.to('cuda')
-    
-    
-    
+
+    f1_old = 0
     for epoch in range(num_train_epochs):
         epoch_train_loss = 0.
         epoch_total_example = 0
@@ -107,28 +135,35 @@ def train(model, tokenizer, optimizer, train_set, validation_set, metric):
             loss.backward()
             optimizer.step()
             epoch_train_loss += loss.item() * batch_size
-        print(f"epoch={epoch + 1}/{num_train_epochs}:\tloss={epoch_train_loss/epoch_total_example:.4f}")
-        model.save_pretrained(f'results/{huggingface_model}/model/checkpoint-{epoch}')
-        tokenizer.save_pretrained(f'results/{huggingface_model}/tokenizer/checkpoint-{epoch}')
-    print("Training Ended")
-    # print("Evaluate accuracy...")
-    # model.eval()
-    # num_validation_set_examples = 0
-    # with torch.no_grad():
-    #     for input_ids, maskeds_attention, target_ids in tqdm(validation_set):
-    #         input_ids = input_ids.to('cuda')
-    #         target_ids = target_ids.to('cuda')
-    #         maskeds_attention = maskeds_attention.to('cuda')
-    #         model_predictions = model.generate(input_ids=input_ids, attention_mask=maskeds_attention,do_sample=False)
-    #         metric.add_batch(predictions=model_predictions, references=target_ids)
-    #         #accuracy.add_batch(predictions=model_predictions, references=target_ids)
-    #         #f1_score.add_batch(predictions=model_predictions, references=target_ids)
-    #         num_validation_set_examples += input_ids.shape[0]
-    # final_score = metric.compute()
-    # #f1 = f1_score.compute()
-    # #accuracy = accuracy.compute()
-    # print(f"Sacreblue: {final_score:.4f}")
-    
+        print(f"epoch={epoch + 1}/{num_train_epochs}")
+        
+        model.eval()
+        num_validation_set_batch = f1 = 0
+        with torch.no_grad():
+            for input_ids, maskeds_attention, target_ids in tqdm(validation_set):
+                input_ids = input_ids.to('cuda')
+                target_ids = target_ids.to('cuda')
+                maskeds_attention = maskeds_attention.to('cuda')
+                model_predictions = model.generate(input_ids=input_ids, attention_mask=maskeds_attention)
+                num_validation_set_batch += 1
+                # F1 over each batch
+                f1 += evaluate(model_predictions, target_ids)
+                
+        f1 = 100.0 * f1 / num_validation_set_batch
+        print(f"\t Train loss = {epoch_train_loss/epoch_total_example:.4f}")
+        print(f"\t Validation F1 = {f1:.2f}")
+        if f1 > f1_old :
+            model.save_pretrained(f'results/{huggingface_model}/model/best-f1')
+            tokenizer.save_pretrained(f'results/{huggingface_model}/tokenizer/best-f1')
+            f1_old = f1
+        if epoch % 10 == 0:
+            model.save_pretrained(f'results/{huggingface_model}/model/checkpoint-{epoch+1}')
+            tokenizer.save_pretrained(f'results/{huggingface_model}/tokenizer/checkpoint-{epoch+1}')
+        model.train()
+        
+    model.save_pretrained(f'results/{huggingface_model}/model/checkpoint-{epoch+1}')
+    tokenizer.save_pretrained(f'results/{huggingface_model}/tokenizer/checkpoint-{epoch+1}')
+        
 # Set seed
 set_seed(seed)
 
@@ -137,8 +172,8 @@ if __name__ == '__main__':
     _data = load_dataset("duorc", "SelfRC")
     
     
-    model = T5ForConditionalGeneration.from_pretrained(huggingface_model)
-    tokenizer = T5Tokenizer.from_pretrained(huggingface_model)
+    model = T5ForConditionalGeneration.from_pretrained("./fine-tuned-t5-base/model/")
+    tokenizer = T5Tokenizer.from_pretrained("./fine-tuned-t5-base/tokenizer/")
     # creating the optimizer
     optimizer = AdamW(model.parameters(), lr=learning_rate)
     # Define a metric for accuracy
