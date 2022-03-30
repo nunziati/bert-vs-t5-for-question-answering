@@ -1,18 +1,9 @@
-import datasets
-import transformers
 from datasets import load_dataset
 from datasets import load_metric
-import logging
-import sys
-
-squad = load_dataset("squad")
 from transformers import AutoTokenizer
+from transformers import DefaultDataCollator
+from transformers import AutoModelForQuestionAnswering, TrainingArguments, Trainer
 
-metric = load_metric("squad")
-
-model_name = "bert-base-uncased"
-
-tokenizer = AutoTokenizer.from_pretrained(model_name)
 def preprocess_function(examples):
     questions = [q.strip() for q in examples["question"]]
     inputs = tokenizer(
@@ -64,39 +55,40 @@ def preprocess_function(examples):
     inputs["end_positions"] = end_positions
     return inputs
 
-def compute_metrics():
-    pass
+if __name__ == '__main__':
+    model_name = "bert-base-uncased"
+    dataset_name = "squad"
 
-tokenized_squad = squad.map(preprocess_function, batched=True, remove_columns=squad["train"].column_names)
+    squad = load_dataset(dataset_name)
 
-from transformers import DefaultDataCollator
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-data_collator = DefaultDataCollator()
+    tokenized_squad = squad.map(preprocess_function, batched=True, remove_columns=squad["train"].column_names)
 
-from transformers import AutoModelForQuestionAnswering, TrainingArguments, Trainer
+    model = AutoModelForQuestionAnswering.from_pretrained(model_name)
 
-model = AutoModelForQuestionAnswering.from_pretrained(model_name)
+    data_collator = DefaultDataCollator()
 
-training_args = TrainingArguments(
-    output_dir="./results_bert_epoch",
-    evaluation_strategy="steps",
-    learning_rate=2e-5,
-    per_device_train_batch_size=16,
-    per_device_eval_batch_size=16,
-    num_train_epochs=10,
-    weight_decay=0.01,
-    save_strategy="epoch",
-    log_level="info",
-    logging_steps=450,
-)
+    training_args = TrainingArguments(
+        output_dir="./results_bert_epoch",
+        evaluation_strategy="steps",
+        learning_rate=2e-5,
+        per_device_train_batch_size=16,
+        per_device_eval_batch_size=16,
+        num_train_epochs=10,
+        weight_decay=0.01,
+        save_strategy="epoch",
+        log_level="info",
+        logging_steps=450,
+    )
 
-trainer = Trainer(
-    model=model,
-    args=training_args,
-    train_dataset=tokenized_squad["train"],
-    eval_dataset=tokenized_squad["validation"],
-    tokenizer=tokenizer,
-    data_collator=data_collator
-)
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=tokenized_squad["train"],
+        eval_dataset=tokenized_squad["validation"],
+        tokenizer=tokenizer,
+        data_collator=data_collator
+    )
 
-trainer.train()
+    trainer.train()
