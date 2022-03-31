@@ -87,7 +87,7 @@ if __name__ == '__main__':
     args = parse_command_line_arguments()
 
     # selecting the model and dataset to be used
-    model_name = args["model"]
+    model_name = args.model
     dataset_name = "squad"
 
     # loading the dataset, model and tokenizer
@@ -100,16 +100,16 @@ if __name__ == '__main__':
 
     # defining the training arguments to be passed to the parameter
     training_args = TrainingArguments(
-        output_dir=args["out_dir"],
-        evaluation_strategy=args["eval_strategy"],
-        learning_rate=args["lr"],
-        per_device_train_batch_size=args["train_batch_size"],
-        per_device_eval_batch_size=args["val_batch_size"],
-        num_train_epochs=args["epochs"],
-        weight_decay=args["weight_decay"],
-        save_strategy=args["save_stragety"],
+        output_dir=args.out_dir,
+        evaluation_strategy=args.eval_strategy,
+        learning_rate=args.lr,
+        per_device_train_batch_size=args.train_batch_size,
+        per_device_eval_batch_size=args.val_batch_size,
+        num_train_epochs=args.epochs,
+        weight_decay=args.weight_decay,
+        save_strategy=args.save_stragety,
         log_level="info",
-        logging_steps=args["steps"],
+        logging_steps=args.steps,
     )
 
     # defining the data collator, useful to build the mini-batches

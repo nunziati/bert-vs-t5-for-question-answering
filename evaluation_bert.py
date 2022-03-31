@@ -2,29 +2,35 @@ from __future__ import print_function
 from tqdm import tqdm
 import torch
 from datasets import load_dataset
-from transformers import  AdamW, set_seed,  pipeline, BertForQuestionAnswering, AutoTokenizer
-from torch.utils.data import DataLoader
-import torch.nn.functional as F
-import numpy as np 
-
-from collections import Counter
-import string
-import re
+from transformers import BertForQuestionAnswering, AutoTokenizer
 import argparse
-import json
-import sys
-import pickle 
-from utils.parse_duorc import parse as duorc_parse
-from utils.parse_squad import parseForBert as parse_squad
+from MyDataset import Dataset, DatasetMap
  
+dataset_instruction = {
+    "duorc": {
+        "parser": DatasetMap.duorc,
+        "test_set": "test"
+    },
+    "squad": {
+        "parser": DatasetMap.squad,
+        "test_set": "validation"
+    }
+}
 
-batch_size = 16
-seed = 7
-num_train_epochs = 40
-learning_rate = 1e-4
-num_workers = 10
 max_input_length = 512
 
+def parse_command_line_arguments():
+    """Parse command line arguments, checking their values."""
+
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--model', default="bert-base-uncased", help="the name of the model/checkpoint to be used for the classifier (e.g. ./results/checkpoint")
+    parser.add_argument('--dataset', default="squad", choices=["squad", "duorc"], help="the name of the dataset to be used for testing")
+    parser.add_argument('--subversion', default="", choices=["", "SelfRC", "ParaphraseRC"], help="the name of the subversion of the dataset, in case 'duorc' dataset is selected")
+    parser.add_argument('--device', default="cpu", choices=["cpu", "cuda:0", "cuda:1"], help="device selected for performing the evaluation")
+    
+    parsed_arguments = parser.parse_args()
+
+    return parsed_arguments
 
 def question_answer(model, tokenizer, question, text):
     
@@ -62,55 +68,21 @@ def question_answer(model, tokenizer, question, text):
                 answer += " " + tokens[i]
     
     return answer
-    
-
-    
-def exact_match_score(prediction, ground_truth):
-    if ground_truth.shape[0] == prediction.shape[0]: 
-        if (ground_truth == prediction).all():
-            return 1
-    return 0
-
-
-def f1_score(prediction, ground_truth):
-    prediction_tokens = prediction.tolist()
-    
-    ground_truth_tokens = ground_truth.tolist()
-    common = Counter(prediction_tokens) & Counter(ground_truth_tokens)
-    num_same = sum(common.values())
-    if num_same == 0:
-        return 0
-    precision = 1.0 * num_same / len(prediction_tokens)
-    recall = 1.0 * num_same / len(ground_truth_tokens)
-    f1 = (2 * precision * recall) / (precision + recall)
-    return f1
-
-
-def evaluate(predictions,gold_answers ):
-    f1 = exact_match = total = 0
-
-    for ground_truths, prediction in zip(gold_answers["input_ids"], predictions["input_ids"]):
-        total += 1
-        # Remove pad token
-        prediction = prediction[prediction!=0]
-        ground_truths = ground_truths[ground_truths!=0]
-        f1 += f1_score(prediction, ground_truths)
-        exact_match += exact_match_score(prediction, ground_truths)
-    return f1, exact_match
-
 
 if __name__ == '__main__':
-    
-    _data = load_dataset("duorc","RC")
-    
-    model = BertForQuestionAnswering.from_pretrained("./results/bert")
-    tokenizer = AutoTokenizer.from_pretrained("./results/bert")
-    
-    test_set = _data["test"]
-    
-    device = "cuda:0"
+    # getting the arguments from command line (or default ones)
+    args = parse_command_line_arguments()
 
-    model.to(device)
+    dataset_name = args.dataset
+    dataset_sub = args.subversion
+    model_name = args.model
+    device = torch.device(args.device)
+
+    model = BertForQuestionAnswering.from_pretrained(model_name).to(device)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    _data = load_dataset(dataset_name, dataset_sub if dataset_name=="duorc" else None)
+    test_set = Dataset(_data[dataset_instruction[dataset_name]["test_set"]], tokenizer, parser=dataset_instruction[dataset_name]["parser"])
     
     model.eval()
     
@@ -119,13 +91,15 @@ if __name__ == '__main__':
     targets = []
     model_predictions = []
     with torch.no_grad():
-        for example in tqdm(test_set):
-            for i in range(len(example['answers'])):
-                questions.append(example['question'])
-                texts.append(example['plot'])
-                targets.append(example['answers'][i] if len(example['answers']) > 0 else "")
-        for index in tqdm(range(len(questions))):
+        for context, question, answer in tqdm(test_set):
+            questions.append(question)
+            texts.append(context)
+            targets.append(answer)
+
+        #for index in tqdm(range(len(questions))):
+        for index in tqdm(range(200)):
             model_predictions.append(question_answer(model, tokenizer, questions[index], texts[index]))
+
         model_predictions = tokenizer(
                                 model_predictions,
                                 padding="longest",
@@ -133,6 +107,7 @@ if __name__ == '__main__':
                                 truncation=True,
                                 return_tensors="pt",
                             )
+
         targets = tokenizer(
                                 targets,
                                 padding="longest",
@@ -140,20 +115,7 @@ if __name__ == '__main__':
                                 truncation=True,
                                 return_tensors="pt",
                             )
-        with open('model_predictions.pickle', 'wb') as f:
-            # Pickle the 'data' dictionary using the highest protocol available.
-            pickle.dump(model_predictions, f, pickle.HIGHEST_PROTOCOL)
-        with open('targets.pickle', 'wb') as f:
-            # Pickle the 'data' dictionary using the highest protocol available.
-            pickle.dump(targets, f, pickle.HIGHEST_PROTOCOL)
-    # with open('model_predictions.pickle', 'rb') as f:
-    # # The protocol version used is detected automatically, so we do not
-    # # have to specify it.
-    #     model_predictions = pickle.load(f)
-    # with open('targets.pickle', 'rb') as f:
-    # # The protocol version used is detected automatically, so we do not
-    # # have to specify it.
-    #     targets = pickle.load(f)
-    f1, em = evaluate(targets, model_predictions)
-    print(100*f1/len(model_predictions["input_ids"]),100*em/len(model_predictions["input_ids"]))
-        
+
+    f1, em = test_set.evaluate(model_predictions, targets)
+    # print(100*f1/len(model_predictions["input_ids"]),100*em/len(model_predictions["input_ids"]))
+    print(f1, em)

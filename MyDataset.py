@@ -15,18 +15,18 @@ class DatasetMap():
     @staticmethod
     def squad(example):
         nr_answer = len(example["answers"]["text"])
-        return example["context"]*nr_answer, example["question"]*nr_answer, [answer if len(answer) > 0 else "" for answer in example["answers"]["text"]]
+        return [example["context"]]*nr_answer, [example["question"]]*nr_answer, [answer if len(answer) > 0 else "" for answer in example["answers"]["text"]]
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, hf_dataset: datasets.arrow_dataset.Dataset, tokenizer: transformers.models.t5.tokenization_t5.T5Tokenizer, parser=None):
+    def __init__(self, hf_dataset: datasets.arrow_dataset.Dataset, tokenizer, parser=None):
         """Constructor for Dataset class
         Args:
             hf_dataset (datasets.arrow_dataset.Dataset): HuggingFace Dataset
-            tokenizer (transformers.models.t5.tokenization_t5.T5Tokenizer): HuggingFace Tokenizer
+            tokenizer: HuggingFace Tokenizer
 
         Raises:
-            Exception: if questions and answers have different length it will raise an exception
+            Exception: if two between questions, answers and contexts have different length it will raise an exception
         """
         self.tokenizer = tokenizer
         self.questions: List[str] = []
@@ -40,9 +40,9 @@ class Dataset(torch.utils.data.Dataset):
             self.questions += _questions
             self.answers += _answers
 
-        if len(self.questions) != len(self.answers):
+        if len(self.questions) != len(self.answers) or len(self.questions) != len(self.contexts):
             raise Exception(
-                "something wrong while building the dataset: questions and asnwers result in different dimensions")
+                "something wrong while building the dataset: questions, contexts and answers result in different dimensions")
 
         self.item_count: int = len(self.questions)
 
@@ -122,7 +122,7 @@ class Dataset(torch.utils.data.Dataset):
         """
         f1 = exact_match = 0
 
-        for ground_truths, prediction in zip(gold_answers, predictions):
+        for ground_truths, prediction in tqdm(zip(gold_answers, predictions)):
             # Remove pad token
             prediction = list(filter(lambda token: token != self.tokenizer.pad_token_id, prediction))
             ground_truths = list(filter(lambda token: token != self.tokenizer.pad_token_id, ground_truths))
