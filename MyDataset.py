@@ -128,4 +128,5 @@ class Dataset(torch.utils.data.Dataset):
             ground_truths = list(filter(lambda token: token != self.tokenizer.pad_token_id, ground_truths))
             f1 += self.__f1_score(prediction, ground_truths)
             exact_match += self.__exact_match_score(prediction, ground_truths)
-        return 100*f1/self.item_count, 100*exact_match/self.item_count
+        return 100*f1/10, 100*exact_match/10
+        # return 100*f1/self.item_count, 100*exact_match/self.item_count
