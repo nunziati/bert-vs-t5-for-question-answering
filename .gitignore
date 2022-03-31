@@ -135,3 +135,4 @@ dataset/dev_story_ids.csv
 dataset/newsqa-data-tokenized-v1.csv
 dataset/*
 dataset/test_story_ids.csv
+results/*
