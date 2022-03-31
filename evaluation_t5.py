@@ -18,6 +18,17 @@ import MyDataset
 from utils.parse_duorc import parse as duorc_parse
 import argparse
 
+dataset_instruction = {
+    "duorc": {
+        "parser": MyDataset.DatasetMap.duorc,
+        "test_set": "test"
+    },
+    "squad": {
+        "parser": MyDataset.DatasetMap.squad,
+        "test_set": "validation"
+    }
+}
+
 def parse_command_line_arguments():
 
     parser = argparse.ArgumentParser(
@@ -27,7 +38,7 @@ def parse_command_line_arguments():
                         help="What type of T5 model do you want use?")
 
     parser.add_argument('dataset', type=str,
-                        help="Dataset to be used")
+                        help="Dataset to be used, if more level provided for the dataset use the '-' token, e.g. duorc-SelfRC")
     
     parser.add_argument('--batch_size', type=int, default=16,
                         help='mini-batch size (default: 16)')
@@ -55,15 +66,21 @@ if __name__ == '__main__':
     for k, v in args.__dict__.items():
         print(k + '=' + str(v))
 
-    _data = load_dataset("duorc", "SelfRC")
-
+    dataset_info = args.dataset.split("-")
+    name = dataset_info[0]
+    _data = None
+    if len(dataset_info) == 1:
+        _data = load_dataset(name)
+    else:
+        _data = load_dataset(name, dataset_info[1])
+        
     model = T5ForConditionalGeneration.from_pretrained(args.t5_model)
     tokenizer = T5Tokenizer.from_pretrained(args.t5_model)
     
-    _test_set = Dataset(_data["test"], tokenizer, parser=MyDataset.DatasetMap.duorc)
+    _test_set = Dataset(_data[dataset_instruction[name]["test_set"]], tokenizer, parser=dataset_instruction[name]["parser"])
     my_testset_dataloader = DataLoader(_test_set, batch_size=args.batch_size, num_workers=args.workers, collate_fn=lambda data: _test_set.pack_minibatch(data))
     
-    device = "cuda:0"
+    device = args.device
     model.to(device)
 
     model.eval()
@@ -100,6 +117,4 @@ if __name__ == '__main__':
             target_encoded += encoded_targets.tolist()
     f1, exact_match = _test_set.evaluate(
         target_encoded, model_predictions_encoded)
-
-    print(f"\t Validation F1 = {f1:.2f}, EM = {exact_match:.2f}")
     print(f"\t F1 = {f1:.2f}, EM = {exact_match:.2f}")
