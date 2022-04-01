@@ -96,8 +96,7 @@ if __name__ == '__main__':
             texts.append(context)
             targets.append(answer)
 
-        #for index in tqdm(range(len(questions))):
-        for index in tqdm(range(10)):
+        for index in tqdm(range(len(questions))):
             model_predictions.append(question_answer(model, tokenizer, questions[index], texts[index]))
 
         model_predictions = tokenizer(
@@ -117,5 +116,4 @@ if __name__ == '__main__':
                             )
 
     f1, em = test_set.evaluate(model_predictions.input_ids.tolist(), targets.input_ids.tolist())
-    # print(100*f1/len(model_predictions["input_ids"]),100*em/len(model_predictions["input_ids"]))
     print(f1, em)

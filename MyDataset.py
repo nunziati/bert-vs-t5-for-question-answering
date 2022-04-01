@@ -124,8 +124,16 @@ class Dataset(torch.utils.data.Dataset):
 
         for ground_truths, prediction in tqdm(zip(gold_answers, predictions)):
             # Remove pad token
-            prediction = list(filter(lambda token: token != self.tokenizer.pad_token_id, prediction))
-            ground_truths = list(filter(lambda token: token != self.tokenizer.pad_token_id, ground_truths))
+            tokens_to_remove = {
+                self.tokenizer.pad_token_id,
+                self.tokenizer.eos_token_id,
+                self.tokenizer.bos_token_id,
+                self.tokenizer.cls_token_id,
+                self.tokenizer.sep_token_id,
+                self.tokenizer.mask_token_id
+            }
+            prediction = list(filter(lambda token: token not in tokens_to_remove, prediction))
+            ground_truths = list(filter(lambda token: token not in tokens_to_remove, ground_truths))
             f1 += self.__f1_score(prediction, ground_truths)
             exact_match += self.__exact_match_score(prediction, ground_truths)
         return 100*f1/len(predictions), 100*exact_match/len(predictions)
