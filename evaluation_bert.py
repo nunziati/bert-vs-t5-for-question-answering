@@ -23,7 +23,7 @@ def parse_command_line_arguments():
     """Parse command line arguments, checking their values."""
 
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--model', default="bert-base-uncased", help="the name of the model/checkpoint to be used for the classifier (e.g. ./results/checkpoint")
+    parser.add_argument('--model', default="./results/bert", help="the name of the model/checkpoint to be used for the classifier (e.g. ./results/checkpoint")
     parser.add_argument('--dataset', default="squad", choices=["squad", "duorc"], help="the name of the dataset to be used for testing")
     parser.add_argument('--subversion', default="", choices=["", "SelfRC", "ParaphraseRC"], help="the name of the subversion of the dataset, in case 'duorc' dataset is selected")
     parser.add_argument('--device', default="cpu", choices=["cpu", "cuda:0", "cuda:1"], help="device selected for performing the evaluation")
@@ -97,7 +97,7 @@ if __name__ == '__main__':
             targets.append(answer)
 
         #for index in tqdm(range(len(questions))):
-        for index in tqdm(range(200)):
+        for index in tqdm(range(10)):
             model_predictions.append(question_answer(model, tokenizer, questions[index], texts[index]))
 
         model_predictions = tokenizer(
@@ -116,6 +116,6 @@ if __name__ == '__main__':
                                 return_tensors="pt",
                             )
 
-    f1, em = test_set.evaluate(model_predictions, targets)
+    f1, em = test_set.evaluate(model_predictions.input_ids.tolist(), targets.input_ids.tolist())
     # print(100*f1/len(model_predictions["input_ids"]),100*em/len(model_predictions["input_ids"]))
     print(f1, em)

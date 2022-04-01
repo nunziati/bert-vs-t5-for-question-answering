@@ -1,0 +1,2 @@
+- togliere altri token speciali, oltre al token di padding (nella funzione evaluate)
+- il conteggio dei token comuni non funziona
