@@ -1,21 +1,12 @@
 from __future__ import print_function
 from tqdm import tqdm
 import torch
-from datasets import load_dataset, load_metric
-from transformers import T5ForConditionalGeneration, T5Tokenizer, AdamW, set_seed,  pipeline, BertForQuestionAnswering, AutoTokenizer
-from torch.utils.data import DataLoader
-import torch.nn.functional as F
-import numpy as np 
-
-from collections import Counter
-import string
-import re
+from datasets import load_dataset
+from transformers import T5ForConditionalGeneration, T5Tokenizer
+from torch.utils.data import DataLoader 
 import argparse
-import json
-import sys
 from MyDataset import Dataset
 import MyDataset
-from utils.parse_duorc import parse as duorc_parse
 import argparse
 
 dataset_instruction = {
@@ -34,10 +25,10 @@ def parse_command_line_arguments():
     parser = argparse.ArgumentParser(
         description='CLI for evaluating T5 T2T model')
 
-    parser.add_argument('t5_model', type=str, default="t5-base",
+    parser.add_argument('--t5_model', type=str, default="results/t5-base/checkpoint-31",
                         help="What type of T5 model do you want use?")
 
-    parser.add_argument('dataset', type=str,
+    parser.add_argument('--dataset', type=str, default='duorc-SelfRC',
                         help="Dataset to be used, if more level provided for the dataset use the '-' token, e.g. duorc-SelfRC")
     
     parser.add_argument('--batch_size', type=int, default=16,
@@ -115,6 +106,7 @@ if __name__ == '__main__':
 
             model_predictions_encoded += model_predictions.tolist()
             target_encoded += encoded_targets.tolist()
+            
     f1, exact_match = _test_set.evaluate(
         target_encoded, model_predictions_encoded)
     print(f"\t F1 = {f1:.2f}, EM = {exact_match:.2f}")

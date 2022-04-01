@@ -4,7 +4,7 @@ from tqdm import tqdm
 import torch
 
 from datasets import load_dataset
-from transformers import PreTrainedTokenizer, T5ForConditionalGeneration, T5Tokenizer, AdamW, set_seed
+from transformers import PreTrainedTokenizer, MT5ForConditionalGeneration, T5Tokenizer, AdamW, set_seed
 from torch.utils.data import DataLoader
 import argparse
 
@@ -15,15 +15,15 @@ import MyDataset
 def parse_command_line_arguments():
 
     parser = argparse.ArgumentParser(
-        description='CLI for training T5 T2T model')
+        description='CLI for training MT5 T2T model')
 
-    parser.add_argument('--t5_model', type=str, default="t5-base",
+    parser.add_argument('--t5_model', type=str, default="google/mt5-small",
                         help="What type of T5 model do you want use?")
 
     parser.add_argument('--batch_size', type=int, default=16,
                         help='mini-batch size (default: 16)')
 
-    parser.add_argument('--epochs', type=int, default=40,
+    parser.add_argument('--epochs', type=int, default=30,
                         help='number of training epochs (default: 40)')
 
     parser.add_argument('--lr', type=float, default=1e-4,
@@ -46,11 +46,11 @@ def parse_command_line_arguments():
     return parsed_arguments
 
 
-def train(model: T5ForConditionalGeneration, tokenizer: PreTrainedTokenizer, optimizer: AdamW, train_set: Dataset, validation_set: Dataset, num_train_epochs: int, device: str, batch_size: int, max_input_length: int = 512):
+def train(model: MT5ForConditionalGeneration, tokenizer: PreTrainedTokenizer, optimizer: AdamW, train_set: Dataset, validation_set: Dataset, num_train_epochs: int, device: str, batch_size: int, max_input_length: int = 512):
     """_summary_
 
     Args:
-        model (T5ForConditionalGeneration): _description_
+        model (MT5ForConditionalGeneration): _description_
         tokenizer (PreTrainedTokenizer): _description_
         optimizer (AdamW): _description_
         train_set (Dataset): _description_
@@ -147,18 +147,18 @@ def train(model: T5ForConditionalGeneration, tokenizer: PreTrainedTokenizer, opt
 
         print(f"\t Validation F1 = {f1:.2f}, EM = {exact_match:.2f}")
         if f1 > f1_old :
-            model.save_pretrained(f'results/{model.name_or_path}/model/best-f1')
-            tokenizer.save_pretrained(f'results/{model.name_or_path}/tokenizer/best-f1')
+            model.save_pretrained(f'results/{model.name_or_path}/best-f1')
+            tokenizer.save_pretrained(f'results/{model.name_or_path}/best-f1')
             f1_old = f1
         if epoch+1 % 10 == 0:
-            model.save_pretrained(f'results/{model.name_or_path}/model/checkpoint-{epoch+1}')
-            tokenizer.save_pretrained(f'results/{model.name_or_path}/tokenizer/checkpoint-{epoch+1}')
+            model.save_pretrained(f'results/{model.name_or_path}/checkpoint-{epoch+1}')
+            tokenizer.save_pretrained(f'results/{model.name_or_path}/tcheckpoint-{epoch+1}')
         model.train()
 
     model.save_pretrained(
-        f'results/{model.name_or_path}/model/checkpoint-{epoch+1}')
+        f'results/{model.name_or_path}/checkpoint-{epoch+1}')
     tokenizer.save_pretrained(
-        f'results/{model.name_or_path}/tokenizer/checkpoint-{epoch+1}')
+        f'results/{model.name_or_path}/checkpoint-{epoch+1}')
 
 
 if __name__ == '__main__':
@@ -170,9 +170,9 @@ if __name__ == '__main__':
     # Set seed
     set_seed(args.seed)
 
-    _data = load_dataset("duorc", "SelfRC")
+    _data = load_dataset("duorc", "ParaphraseRC")
 
-    model = T5ForConditionalGeneration.from_pretrained(args.t5_model)
+    model = MT5ForConditionalGeneration.from_pretrained(args.t5_model)
     tokenizer = T5Tokenizer.from_pretrained(args.t5_model)
     # creating the optimizer
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
