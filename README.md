@@ -7,5 +7,5 @@ Requirements: python 3.6.9
 ```bash
 git clone https://github.com/nunziati/bert-vs-t5-for-question-answering/
 cd bert-vs-t5-for-question-answering
-python -m pip install requirements.txt
+python -m pip install -r requirements.txt
 ```
