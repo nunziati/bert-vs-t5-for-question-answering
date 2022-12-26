@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader
 import argparse
 from MyDataset import Dataset
 import MyDataset
-import argparse
 
 dataset_instruction = {
     "duorc": {
