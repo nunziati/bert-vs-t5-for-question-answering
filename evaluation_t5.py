@@ -107,5 +107,5 @@ if __name__ == '__main__':
             target_encoded += encoded_targets.tolist()
             
     f1, exact_match = _test_set.evaluate(
-        target_encoded, model_predictions_encoded)
+        model_predictions_encoded, target_encoded)
     print(f"\t F1 = {f1:.2f}, EM = {exact_match:.2f}")
