@@ -143,7 +143,7 @@ def train(model: MT5ForConditionalGeneration, tokenizer: PreTrainedTokenizer, op
                 model_predictions_encoded += model_predictions.tolist()
                 target_encoded += encoded_targets.tolist()
         f1, exact_match = validation_set.evaluate(
-            target_encoded, model_predictions_encoded)
+            model_predictions_encoded, target_encoded)
 
         print(f"\t Validation F1 = {f1:.2f}, EM = {exact_match:.2f}")
         if f1 > f1_old :
